@@ -20,3 +20,18 @@ export interface AttendanceLog {
   timestamp: string;
   createdAt: string;
 }
+
+// Interface to match Supabase database structure
+export interface SupabaseAttendee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  region: string;
+  is_checked_in: boolean;
+  is_checked_out: boolean;
+  check_in_time?: string;
+  check_out_time?: string;
+  created_at: string;
+}

@@ -1,5 +1,7 @@
 import { Attendee } from "@/types";
 import { SupabaseAttendee } from "@/integrations/supabase/types";
+
+import { Attendee, SupabaseAttendee } from "@/types";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { createLog } from "./logService";
@@ -17,6 +19,26 @@ const mapToAttendee = async (supabaseAttendee: SupabaseAttendee): Promise<Attend
     check_in_time: supabaseAttendee.check_in_time,
     check_out_time: supabaseAttendee.check_out_time,
   });
+  
+  return {
+    id: supabaseAttendee.id,
+    name: supabaseAttendee.name,
+    email: supabaseAttendee.email,
+    phone: supabaseAttendee.phone,
+    gender: supabaseAttendee.gender as "male" | "female" | "other",
+    region: supabaseAttendee.region,
+    isCheckedIn: supabaseAttendee.is_checked_in,
+    isCheckedOut: supabaseAttendee.is_checked_out,
+    checkInTime: supabaseAttendee.check_in_time,
+    checkOutTime: supabaseAttendee.check_out_time,
+    qrCode
+  };
+};
+
+// Helper function to map from Supabase format to our application format
+const mapToAttendee = async (supabaseAttendee: SupabaseAttendee): Promise<Attendee> => {
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(supabaseAttendee.id);
   
   return {
     id: supabaseAttendee.id,
