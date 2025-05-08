@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAttendees } from "@/context/AttendeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Check, UserCheck, User, Users } from "lucide-react";
+import { Check, UserCheck, User, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
@@ -17,6 +17,7 @@ const Dashboard = () => {
   );
   
   const checkedInCount = attendees.filter(a => a.isCheckedIn).length;
+  const checkedOutCount = attendees.filter(a => a.isCheckedOut).length;
   
   return (
     <div className="space-y-6">
@@ -74,14 +75,12 @@ const Dashboard = () => {
         
         <Card className="bg-accent text-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Check-in Rate</CardTitle>
+            <CardTitle className="text-lg font-medium">Checked Out</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">
-                {attendees.length > 0 ? Math.round((checkedInCount / attendees.length) * 100) : 0}%
-              </span>
-              <Check className="h-6 w-6 opacity-75" />
+              <span className="text-3xl font-bold">{checkedOutCount}</span>
+              <LogOut className="h-6 w-6 opacity-75" />
             </div>
           </CardContent>
         </Card>
@@ -114,11 +113,17 @@ const Dashboard = () => {
                       <td className="px-4 py-3">
                         <span className={cn(
                           "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          attendee.isCheckedIn 
-                            ? "bg-status-checked-in text-green-800" 
-                            : "bg-status-not-checked-in text-red-800"
+                          attendee.isCheckedOut 
+                            ? "bg-blue-100 text-blue-800" 
+                            : attendee.isCheckedIn 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-red-100 text-red-800"
                         )}>
-                          {attendee.isCheckedIn ? "Checked In" : "Not Checked In"}
+                          {attendee.isCheckedOut 
+                            ? "Checked Out" 
+                            : attendee.isCheckedIn 
+                              ? "Checked In" 
+                              : "Not Checked In"}
                         </span>
                       </td>
                     </tr>

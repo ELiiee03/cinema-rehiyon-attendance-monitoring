@@ -41,11 +41,11 @@ const Scanner = () => {
       const updated = toggleAttendeeStatus(scannedData);
       
       if (updated) {
-        toast.success(
-          updated.isCheckedIn 
-            ? `${attendee.name} successfully checked in!` 
-            : `${attendee.name} checked out!`
-        );
+        if (updated.isCheckedIn && !updated.isCheckedOut) {
+          toast.success(`${attendee.name} successfully checked in!`);
+        } else if (updated.isCheckedOut) {
+          toast.success(`${attendee.name} checked out!`);
+        }
       }
     } else {
       toast.error("Invalid QR code. Attendee not found.");

@@ -12,6 +12,7 @@ let mockAttendees: Attendee[] = [
     gender: "male",
     region: "North",
     isCheckedIn: true,
+    isCheckedOut: false,
     checkInTime: "2025-05-08T09:30:00",
     qrCode: ""
   },
@@ -23,6 +24,7 @@ let mockAttendees: Attendee[] = [
     gender: "female",
     region: "South",
     isCheckedIn: false,
+    isCheckedOut: false,
     qrCode: ""
   },
   {
@@ -33,7 +35,9 @@ let mockAttendees: Attendee[] = [
     gender: "other",
     region: "East",
     isCheckedIn: true,
+    isCheckedOut: true,
     checkInTime: "2025-05-08T10:15:00",
+    checkOutTime: "2025-05-08T14:30:00",
     qrCode: ""
   }
 ];
@@ -75,10 +79,11 @@ export const updateAttendeeStatus = (id: string, isCheckedIn: boolean): Attendee
   
   if (isCheckedIn) {
     attendee.isCheckedIn = true;
+    attendee.isCheckedOut = false;
     attendee.checkInTime = now;
     attendee.checkOutTime = undefined;
   } else {
-    attendee.isCheckedIn = false;
+    attendee.isCheckedOut = true;
     attendee.checkOutTime = now;
   }
   
