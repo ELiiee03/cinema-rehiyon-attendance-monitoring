@@ -12,7 +12,7 @@ import { Attendee } from "@/types";
 const Register = () => {
   const { addAttendee } = useAttendees();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newAttendee, setNewAttendee] = useState<Omit<Attendee, "id" | "qrCode" | "isCheckedIn">>({
+  const [newAttendee, setNewAttendee] = useState<Omit<Attendee, "id" | "qrCode" | "isCheckedIn" | "isCheckedOut">>({
     name: "",
     email: "",
     phone: "",
@@ -42,7 +42,8 @@ const Register = () => {
       setIsSubmitting(true);
       const attendee = await addAttendee({
         ...newAttendee,
-        isCheckedIn: false
+        isCheckedIn: false,
+        isCheckedOut: false
       });
       
       setRegisteredAttendee(attendee);
