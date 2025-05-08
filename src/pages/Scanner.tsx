@@ -52,10 +52,6 @@ const Scanner = () => {
     }
   };
 
-  const toggleCamera = () => {
-    setFacingMode(facingMode === "environment" ? "user" : "environment");
-  };
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -125,15 +121,7 @@ const Scanner = () => {
                 </div>
               </div>
             </CardContent>
-            <div className="p-4 bg-muted/20 text-center">
-              <Button 
-                onClick={toggleCamera}
-                className="flex items-center gap-2"
-                variant="secondary"
-              >
-                Switch Camera
-              </Button>
-            </div>
+            {/* Switch camera button removed */}
           </Card>
         </TabsContent>
         

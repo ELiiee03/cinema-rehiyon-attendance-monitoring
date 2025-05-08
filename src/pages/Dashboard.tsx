@@ -7,12 +7,12 @@ import { Check, UserCheck, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
-  const { attendees, toggleAttendeeStatus } = useAttendees();
+  const { attendees } = useAttendees();
   const [searchTerm, setSearchTerm] = useState("");
   
   const filteredAttendees = attendees.filter(attendee => 
     attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    attendee.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
     attendee.region.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
@@ -97,11 +97,10 @@ const Dashboard = () => {
               <thead className="text-xs uppercase bg-gray-50">
                 <tr>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Contact Number</th>
                   <th className="px-4 py-3">Region</th>
                   <th className="px-4 py-3">Gender</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,7 +108,7 @@ const Dashboard = () => {
                   filteredAttendees.map((attendee) => (
                     <tr key={attendee.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium">{attendee.name}</td>
-                      <td className="px-4 py-3">{attendee.email}</td>
+                      <td className="px-4 py-3">{attendee.phone}</td>
                       <td className="px-4 py-3">{attendee.region}</td>
                       <td className="px-4 py-3 capitalize">{attendee.gender}</td>
                       <td className="px-4 py-3">
@@ -122,24 +121,11 @@ const Dashboard = () => {
                           {attendee.isCheckedIn ? "Checked In" : "Not Checked In"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => toggleAttendeeStatus(attendee.id)}
-                          className={cn(
-                            "text-xs font-medium px-3 py-1 rounded",
-                            attendee.isCheckedIn 
-                              ? "bg-red-100 text-red-700 hover:bg-red-200" 
-                              : "bg-green-100 text-green-700 hover:bg-green-200"
-                          )}
-                        >
-                          {attendee.isCheckedIn ? "Check Out" : "Check In"}
-                        </button>
-                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr className="border-b">
-                    <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
                       No attendees found matching your search.
                     </td>
                   </tr>
