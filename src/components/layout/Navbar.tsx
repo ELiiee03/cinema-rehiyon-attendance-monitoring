@@ -6,7 +6,8 @@ export default function Navbar() {
   const location = useLocation();
   
   const navItems = [
-    { name: "Dashboard", path: "/" },
+    { name: "Home", path: "/" },
+    { name: "Dashboard", path: "/dashboard" },
     { name: "QR Scanner", path: "/scanner" },
     { name: "Register", path: "/register" },
   ];
