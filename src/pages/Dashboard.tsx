@@ -14,9 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { ReloadIcon } from "@radix-ui/react-icons";
 
 const Dashboard = () => {
-  const { attendees } = useAttendees();
+  const { attendees, loading, refreshAttendees } = useAttendees();
   const [searchTerm, setSearchTerm] = useState("");
   
   const filteredAttendees = attendees.filter(attendee => 
@@ -45,13 +47,24 @@ const Dashboard = () => {
           <p className="text-gray-600">Track and manage attendee check-ins</p>
         </div>
         
-        <Input
-          type="search"
-          placeholder="Search attendees..."
-          className="max-w-xs"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={() => refreshAttendees()}
+            disabled={loading}
+            title="Refresh data"
+          >
+            {loading ? <ReloadIcon className="h-4 w-4 animate-spin" /> : <ReloadIcon className="h-4 w-4" />}
+          </Button>
+          <Input
+            type="search"
+            placeholder="Search attendees..."
+            className="max-w-xs"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -109,57 +122,64 @@ const Dashboard = () => {
           <CardTitle>Attendee List</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact Number</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Check-In Time</TableHead>
-                  <TableHead>Check-Out Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAttendees.length > 0 ? (
-                  filteredAttendees.map((attendee) => (
-                    <TableRow key={attendee.id}>
-                      <TableCell className="font-medium">{attendee.name}</TableCell>
-                      <TableCell>{attendee.phone}</TableCell>
-                      <TableCell>{attendee.region}</TableCell>
-                      <TableCell className="capitalize">{attendee.gender}</TableCell>
-                      <TableCell>
-                        <span className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          attendee.isCheckedOut 
-                            ? "bg-blue-100 text-blue-800" 
-                            : attendee.isCheckedIn 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                        )}>
-                          {attendee.isCheckedOut 
-                            ? "Checked Out" 
-                            : attendee.isCheckedIn 
-                              ? "Checked In" 
-                              : "Not Checked In"}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
-                      <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <ReloadIcon className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading attendees...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 py-6">
-                      No attendees found matching your search.
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact Number</TableHead>
+                    <TableHead>Region</TableHead>
+                    <TableHead>Gender</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Check-In Time</TableHead>
+                    <TableHead>Check-Out Time</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredAttendees.length > 0 ? (
+                    filteredAttendees.map((attendee) => (
+                      <TableRow key={attendee.id}>
+                        <TableCell className="font-medium">{attendee.name}</TableCell>
+                        <TableCell>{attendee.phone}</TableCell>
+                        <TableCell>{attendee.region}</TableCell>
+                        <TableCell className="capitalize">{attendee.gender}</TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                            attendee.isCheckedOut 
+                              ? "bg-blue-100 text-blue-800" 
+                              : attendee.isCheckedIn 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-red-100 text-red-800"
+                          )}>
+                            {attendee.isCheckedOut 
+                              ? "Checked Out" 
+                              : attendee.isCheckedIn 
+                                ? "Checked In" 
+                                : "Not Checked In"}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
+                        <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-gray-500 py-6">
+                        {searchTerm ? "No attendees found matching your search." : "No attendees registered yet."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

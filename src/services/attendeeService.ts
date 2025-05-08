@@ -1,99 +1,107 @@
 
 import { Attendee } from "@/types";
 import QRCode from "qrcode";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data storage (would be replaced with API calls in a real app)
-let mockAttendees: Attendee[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+1234567890",
-    gender: "male",
-    region: "North",
-    isCheckedIn: true,
-    isCheckedOut: false,
-    checkInTime: "2025-05-08T09:30:00",
-    qrCode: ""
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    phone: "+1987654321",
-    gender: "female",
-    region: "South",
-    isCheckedIn: false,
-    isCheckedOut: false,
-    qrCode: ""
-  },
-  {
-    id: "3",
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    phone: "+1122334455",
-    gender: "other",
-    region: "East",
-    isCheckedIn: true,
-    isCheckedOut: true,
-    checkInTime: "2025-05-08T10:15:00",
-    checkOutTime: "2025-05-08T14:30:00",
-    qrCode: ""
+export const getAttendees = async (): Promise<Attendee[]> => {
+  const { data, error } = await supabase.from("attendees").select("*");
+  
+  if (error) {
+    console.error("Error fetching attendees:", error);
+    return [];
   }
-];
-
-// Generate QR codes for mock data
-(async () => {
-  for (const attendee of mockAttendees) {
-    attendee.qrCode = await QRCode.toDataURL(attendee.id);
-  }
-})();
-
-export const getAttendees = (): Attendee[] => {
-  return mockAttendees;
+  
+  // Generate QR codes for each attendee
+  const attendeesWithQR = await Promise.all(
+    data.map(async (attendee) => {
+      const qrCode = await QRCode.toDataURL(attendee.id);
+      return { ...attendee, qrCode };
+    })
+  );
+  
+  return attendeesWithQR;
 };
 
-export const getAttendeeById = (id: string): Attendee | undefined => {
-  return mockAttendees.find(attendee => attendee.id === id);
+export const getAttendeeById = async (id: string): Promise<Attendee | undefined> => {
+  const { data, error } = await supabase
+    .from("attendees")
+    .select("*")
+    .eq("id", id)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching attendee by ID:", error);
+    return undefined;
+  }
+  
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(data.id);
+  
+  return { ...data, qrCode };
 };
 
 export const createAttendee = async (attendee: Omit<Attendee, "id" | "qrCode">): Promise<Attendee> => {
-  const newId = Date.now().toString();
-  const qrCode = await QRCode.toDataURL(newId);
+  const { data, error } = await supabase
+    .from("attendees")
+    .insert([attendee])
+    .select()
+    .single();
   
-  const newAttendee: Attendee = {
-    ...attendee,
-    id: newId,
-    qrCode
-  };
+  if (error) {
+    console.error("Error creating attendee:", error);
+    throw new Error("Failed to create attendee");
+  }
   
-  mockAttendees.push(newAttendee);
-  return newAttendee;
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(data.id);
+  
+  return { ...data, qrCode };
 };
 
-export const updateAttendeeStatus = (id: string, isCheckedIn: boolean): Attendee | undefined => {
-  const attendee = mockAttendees.find(a => a.id === id);
-  if (!attendee) return undefined;
-
+export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Promise<Attendee | undefined> => {
   const now = new Date().toISOString();
   
+  // First get the current attendee to check their status
+  const { data: currentAttendee } = await supabase
+    .from("attendees")
+    .select("*")
+    .eq("id", id)
+    .single();
+    
+  if (!currentAttendee) {
+    return undefined;
+  }
+  
+  let updateData: any = {};
+  
   if (isCheckedIn) {
-    attendee.isCheckedIn = true;
-    if (!attendee.isCheckedOut) {
-      // Only update check-in time if they haven't checked out yet
-      attendee.checkInTime = now;
-    }
+    // Checking in
+    updateData = {
+      is_checked_in: true,
+      check_in_time: now
+    };
   } else {
-    // This is now a separate operation handled through checkOutAttendee
-    attendee.isCheckedOut = true;
-    attendee.checkOutTime = now;
+    // Checking out
+    updateData = {
+      is_checked_out: true,
+      check_out_time: now
+    };
   }
   
-  // Find the index of the attendee in the mock data and update it
-  const index = mockAttendees.findIndex(a => a.id === id);
-  if (index !== -1) {
-    mockAttendees[index] = attendee;
+  const { data, error } = await supabase
+    .from("attendees")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating attendee status:", error);
+    return undefined;
   }
   
-  return attendee;
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(data.id);
+  
+  return { ...data, qrCode };
 };

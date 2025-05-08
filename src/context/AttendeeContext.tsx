@@ -5,10 +5,13 @@ import { getAttendees, createAttendee, updateAttendeeStatus } from "@/services/a
 
 interface AttendeeContextType {
   attendees: Attendee[];
+  loading: boolean;
+  error: Error | null;
   addAttendee: (attendee: Omit<Attendee, "id" | "qrCode">) => Promise<Attendee>;
-  toggleAttendeeStatus: (id: string) => Attendee | undefined;
-  checkInAttendee: (id: string) => Attendee | undefined;
-  checkOutAttendee: (id: string) => Attendee | undefined;
+  toggleAttendeeStatus: (id: string) => Promise<Attendee | undefined>;
+  checkInAttendee: (id: string) => Promise<Attendee | undefined>;
+  checkOutAttendee: (id: string) => Promise<Attendee | undefined>;
+  refreshAttendees: () => Promise<void>;
 }
 
 const AttendeeContext = createContext<AttendeeContextType | undefined>(undefined);
@@ -27,70 +30,106 @@ interface AttendeeProviderProps {
 
 export function AttendeeProvider({ children }: AttendeeProviderProps) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refreshAttendees = async () => {
+    try {
+      setLoading(true);
+      const data = await getAttendees();
+      setAttendees(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch attendees"));
+      console.error("Failed to fetch attendees:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Load initial attendee data
-    const initialAttendees = getAttendees();
-    setAttendees(initialAttendees);
+    refreshAttendees();
   }, []);
 
   const addAttendee = async (attendeeData: Omit<Attendee, "id" | "qrCode">) => {
-    const newAttendee = await createAttendee(attendeeData);
-    setAttendees([...attendees, newAttendee]);
-    return newAttendee;
+    try {
+      const defaultAttendee = {
+        ...attendeeData,
+        isCheckedIn: false,
+        isCheckedOut: false,
+      };
+      
+      const newAttendee = await createAttendee(defaultAttendee);
+      setAttendees(prev => [...prev, newAttendee]);
+      return newAttendee;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to add attendee"));
+      throw err;
+    }
   };
 
-  const toggleAttendeeStatus = (id: string) => {
+  const toggleAttendeeStatus = async (id: string): Promise<Attendee | undefined> => {
     const attendee = attendees.find(a => a.id === id);
     if (!attendee) return undefined;
     
-    const updatedAttendee = updateAttendeeStatus(id, !attendee.isCheckedIn);
-    
-    if (updatedAttendee) {
-      setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+    try {
+      const updatedAttendee = await updateAttendeeStatus(id, !attendee.isCheckedIn);
+      
+      if (updatedAttendee) {
+        setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+      }
+      
+      return updatedAttendee;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update attendee status"));
+      return undefined;
     }
-    
-    return updatedAttendee;
   };
 
-  const checkInAttendee = (id: string) => {
-    const attendee = attendees.find(a => a.id === id);
-    if (!attendee) return undefined;
-    
-    const updatedAttendee = updateAttendeeStatus(id, true);
-    
-    if (updatedAttendee) {
-      setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+  const checkInAttendee = async (id: string): Promise<Attendee | undefined> => {
+    try {
+      const updatedAttendee = await updateAttendeeStatus(id, true);
+      
+      if (updatedAttendee) {
+        setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+      }
+      
+      return updatedAttendee;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to check in attendee"));
+      return undefined;
     }
-    
-    return updatedAttendee;
   };
 
-  const checkOutAttendee = (id: string) => {
+  const checkOutAttendee = async (id: string): Promise<Attendee | undefined> => {
     const attendee = attendees.find(a => a.id === id);
     if (!attendee || !attendee.isCheckedIn) return undefined;
     
-    // First ensure they're checked in, then check them out
-    let updatedAttendee = updateAttendeeStatus(id, true);
-    if (updatedAttendee) {
-      updatedAttendee = {
-        ...updatedAttendee,
-        isCheckedOut: true,
-        checkOutTime: new Date().toISOString()
-      };
+    try {
+      // Always set to false for check out
+      const updatedAttendee = await updateAttendeeStatus(id, false);
       
-      setAttendees(attendees.map(a => a.id === id ? updatedAttendee! : a));
+      if (updatedAttendee) {
+        setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+      }
+      
+      return updatedAttendee;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to check out attendee"));
+      return undefined;
     }
-    
-    return updatedAttendee;
   };
 
   const value = {
     attendees,
+    loading,
+    error,
     addAttendee,
     toggleAttendeeStatus,
     checkInAttendee,
-    checkOutAttendee
+    checkOutAttendee,
+    refreshAttendees
   };
 
   return <AttendeeContext.Provider value={value}>{children}</AttendeeContext.Provider>;

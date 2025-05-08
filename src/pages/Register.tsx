@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Attendee } from "@/types";
+import { ReloadIcon } from "@radix-ui/react-icons";
 
 const Register = () => {
   const { addAttendee } = useAttendees();
@@ -144,7 +145,12 @@ const Register = () => {
                 className="w-full mt-6 bg-secondary hover:bg-secondary/90"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Registering..." : "Register Attendee"}
+                {isSubmitting ? (
+                  <>
+                    <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                    Registering...
+                  </>
+                ) : "Register Attendee"}
               </Button>
             </form>
           </CardContent>
