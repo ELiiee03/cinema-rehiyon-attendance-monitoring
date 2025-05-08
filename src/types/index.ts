@@ -1,4 +1,3 @@
-
 export interface Attendee {
   id: string;
   name: string;
@@ -11,4 +10,13 @@ export interface Attendee {
   checkInTime?: string;
   checkOutTime?: string;
   qrCode: string;
+}
+
+export interface AttendanceLog {
+  id: string;
+  attendeeId: string;
+  attendeeName: string;
+  action: "check_in" | "check_out";
+  timestamp: string;
+  createdAt: string;
 }

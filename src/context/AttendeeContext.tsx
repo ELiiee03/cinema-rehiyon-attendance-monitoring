@@ -1,17 +1,21 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Attendee } from "@/types";
+import { Attendee, AttendanceLog } from "@/types";
 import { getAttendees, createAttendee, updateAttendeeStatus } from "@/services/attendeeService";
+import { getLogs, getLogsByAttendeeId } from "@/services/logService";
 
 interface AttendeeContextType {
   attendees: Attendee[];
+  logs: AttendanceLog[];
   loading: boolean;
+  logsLoading: boolean;
   error: Error | null;
   addAttendee: (attendee: Omit<Attendee, "id" | "qrCode">) => Promise<Attendee>;
   toggleAttendeeStatus: (id: string) => Promise<Attendee | undefined>;
   checkInAttendee: (id: string) => Promise<Attendee | undefined>;
   checkOutAttendee: (id: string) => Promise<Attendee | undefined>;
   refreshAttendees: () => Promise<void>;
+  refreshLogs: () => Promise<void>;
+  getAttendeeLogsById: (id: string) => Promise<AttendanceLog[]>;
 }
 
 const AttendeeContext = createContext<AttendeeContextType | undefined>(undefined);
@@ -30,7 +34,9 @@ interface AttendeeProviderProps {
 
 export function AttendeeProvider({ children }: AttendeeProviderProps) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [logsLoading, setLogsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
   const refreshAttendees = async () => {
@@ -46,10 +52,35 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
       setLoading(false);
     }
   };
+  
+  const refreshLogs = async () => {
+    try {
+      setLogsLoading(true);
+      const data = await getLogs();
+      setLogs(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch logs"));
+      console.error("Failed to fetch logs:", err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+  
+  const getAttendeeLogsById = async (id: string): Promise<AttendanceLog[]> => {
+    try {
+      return await getLogsByAttendeeId(id);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch attendee logs"));
+      console.error("Failed to fetch attendee logs:", err);
+      return [];
+    }
+  };
 
   useEffect(() => {
-    // Load initial attendee data
+    // Load initial attendee data and logs
     refreshAttendees();
+    refreshLogs();
   }, []);
 
   const addAttendee = async (attendeeData: Omit<Attendee, "id" | "qrCode">) => {
@@ -123,13 +154,17 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
 
   const value = {
     attendees,
+    logs,
     loading,
+    logsLoading,
     error,
     addAttendee,
     toggleAttendeeStatus,
     checkInAttendee,
     checkOutAttendee,
-    refreshAttendees
+    refreshAttendees,
+    refreshLogs,
+    getAttendeeLogsById
   };
 
   return <AttendeeContext.Provider value={value}>{children}</AttendeeContext.Provider>;

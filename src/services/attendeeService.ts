@@ -1,7 +1,37 @@
-
 import { Attendee } from "@/types";
+import { SupabaseAttendee } from "@/integrations/supabase/types";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
+import { createLog } from "./logService";
+
+// Helper function to map from Supabase format to our application format
+const mapToAttendee = async (supabaseAttendee: SupabaseAttendee): Promise<Attendee> => {
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(supabaseAttendee.id);
+  
+  // Debug logging to see raw data coming from Supabase
+  console.log(`Raw Supabase data for ${supabaseAttendee.name}:`, {
+    id: supabaseAttendee.id,
+    is_checked_in: supabaseAttendee.is_checked_in,
+    is_checked_out: supabaseAttendee.is_checked_out,
+    check_in_time: supabaseAttendee.check_in_time,
+    check_out_time: supabaseAttendee.check_out_time,
+  });
+  
+  return {
+    id: supabaseAttendee.id,
+    name: supabaseAttendee.name,
+    email: supabaseAttendee.email,
+    phone: supabaseAttendee.phone,
+    gender: supabaseAttendee.gender as "male" | "female" | "other",
+    region: supabaseAttendee.region,
+    isCheckedIn: supabaseAttendee.is_checked_in,
+    isCheckedOut: supabaseAttendee.is_checked_out,
+    checkInTime: supabaseAttendee.check_in_time,
+    checkOutTime: supabaseAttendee.check_out_time,
+    qrCode
+  };
+};
 
 export const getAttendees = async (): Promise<Attendee[]> => {
   const { data, error } = await supabase.from("attendees").select("*");
@@ -11,13 +41,14 @@ export const getAttendees = async (): Promise<Attendee[]> => {
     return [];
   }
   
+  console.log("Raw data from Supabase:", data);
+  
   // Generate QR codes for each attendee
   const attendeesWithQR = await Promise.all(
-    data.map(async (attendee) => {
-      const qrCode = await QRCode.toDataURL(attendee.id);
-      return { ...attendee, qrCode };
-    })
+    data.map(attendee => mapToAttendee(attendee as SupabaseAttendee))
   );
+  
+  console.log("Mapped attendees after processing:", attendeesWithQR);
   
   return attendeesWithQR;
 };
@@ -34,16 +65,25 @@ export const getAttendeeById = async (id: string): Promise<Attendee | undefined>
     return undefined;
   }
   
-  // Generate QR code
-  const qrCode = await QRCode.toDataURL(data.id);
-  
-  return { ...data, qrCode };
+  // Use the mapToAttendee function for consistent mapping
+  return mapToAttendee(data as SupabaseAttendee);
 };
 
-export const createAttendee = async (attendee: Omit<Attendee, "id" | "qrCode">): Promise<Attendee> => {
+export const createAttendee = async (attendeeData: Omit<Attendee, "id" | "qrCode">): Promise<Attendee> => {
+  // Transform from our app format to Supabase format
+  const supabaseAttendee = {
+    name: attendeeData.name,
+    email: attendeeData.email,
+    phone: attendeeData.phone,
+    gender: attendeeData.gender,
+    region: attendeeData.region,
+    is_checked_in: attendeeData.isCheckedIn,
+    is_checked_out: attendeeData.isCheckedOut
+  };
+  
   const { data, error } = await supabase
     .from("attendees")
-    .insert([attendee])
+    .insert([supabaseAttendee])
     .select()
     .single();
   
@@ -52,10 +92,8 @@ export const createAttendee = async (attendee: Omit<Attendee, "id" | "qrCode">):
     throw new Error("Failed to create attendee");
   }
   
-  // Generate QR code
-  const qrCode = await QRCode.toDataURL(data.id);
-  
-  return { ...data, qrCode };
+  // Use the mapToAttendee function for consistent mapping
+  return mapToAttendee(data as SupabaseAttendee);
 };
 
 export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Promise<Attendee | undefined> => {
@@ -73,6 +111,7 @@ export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Pr
   }
   
   let updateData: any = {};
+  let action: "check_in" | "check_out";
   
   if (isCheckedIn) {
     // Checking in
@@ -80,12 +119,14 @@ export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Pr
       is_checked_in: true,
       check_in_time: now
     };
+    action = "check_in";
   } else {
     // Checking out
     updateData = {
       is_checked_out: true,
       check_out_time: now
     };
+    action = "check_out";
   }
   
   const { data, error } = await supabase
@@ -100,8 +141,9 @@ export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Pr
     return undefined;
   }
   
-  // Generate QR code
-  const qrCode = await QRCode.toDataURL(data.id);
+  // Create a log entry for this action
+  await createLog(id, currentAttendee.name, action);
   
-  return { ...data, qrCode };
+  // Use the mapToAttendee function for consistent mapping
+  return mapToAttendee(data as SupabaseAttendee);
 };

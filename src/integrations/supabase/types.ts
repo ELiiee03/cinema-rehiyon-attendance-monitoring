@@ -51,6 +51,40 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_logs: {
+        Row: {
+          id: string
+          attendee_id: string
+          attendee_name: string
+          action: string
+          timestamp: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          attendee_id: string
+          attendee_name: string
+          action: string
+          timestamp: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          attendee_id?: string
+          attendee_name?: string
+          action?: string
+          timestamp?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_attendee_id_fkey"
+            columns: ["attendee_id"]
+            referencedRelation: "attendees"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -65,6 +99,28 @@ export type Database = {
       [_ in never]: never
     }
   }
+}
+
+export interface SupabaseAttendee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  region: string;
+  is_checked_in: boolean;
+  is_checked_out: boolean;
+  check_in_time: string | null;
+  check_out_time: string | null;
+}
+
+export interface SupabaseAttendanceLog {
+  id: string;
+  attendee_id: string;
+  attendee_name: string;
+  action: string;
+  timestamp: string;
+  created_at: string;
 }
 
 type DefaultSchema = Database[Extract<keyof Database, "public">]
