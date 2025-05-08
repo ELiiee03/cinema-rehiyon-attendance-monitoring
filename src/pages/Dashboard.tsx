@@ -3,13 +3,20 @@ import { useState } from "react";
 import { useAttendees } from "@/context/AttendeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Check, UserCheck, User, Users, LogOut } from "lucide-react";
+import { UserCheck, User, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const Dashboard = () => {
-  const { attendees, checkInAttendee, checkOutAttendee } = useAttendees();
+  const { attendees } = useAttendees();
   const [searchTerm, setSearchTerm] = useState("");
   
   const filteredAttendees = attendees.filter(attendee => 
@@ -21,19 +28,12 @@ const Dashboard = () => {
   const checkedInCount = attendees.filter(a => a.isCheckedIn).length;
   const checkedOutCount = attendees.filter(a => a.isCheckedOut).length;
 
-  const handleCheckIn = (id: string) => {
-    const updatedAttendee = checkInAttendee(id);
-    if (updatedAttendee) {
-      toast.success(`${updatedAttendee.name} has been checked in`);
-    }
-  };
-
-  const handleCheckOut = (id: string) => {
-    const updatedAttendee = checkOutAttendee(id);
-    if (updatedAttendee) {
-      toast.success(`${updatedAttendee.name} has been checked out`);
-    } else {
-      toast.error("Attendee must be checked in before checking out");
+  const formatDateTime = (dateTimeStr?: string) => {
+    if (!dateTimeStr) return "—";
+    try {
+      return format(new Date(dateTimeStr), "MMM d, yyyy h:mm a");
+    } catch (error) {
+      return "Invalid date";
     }
   };
   
@@ -110,26 +110,27 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Contact Number</th>
-                  <th className="px-4 py-3">Region</th>
-                  <th className="px-4 py-3">Gender</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Contact Number</TableHead>
+                  <TableHead>Region</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Check-In Time</TableHead>
+                  <TableHead>Check-Out Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredAttendees.length > 0 ? (
                   filteredAttendees.map((attendee) => (
-                    <tr key={attendee.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">{attendee.name}</td>
-                      <td className="px-4 py-3">{attendee.phone}</td>
-                      <td className="px-4 py-3">{attendee.region}</td>
-                      <td className="px-4 py-3 capitalize">{attendee.gender}</td>
-                      <td className="px-4 py-3">
+                    <TableRow key={attendee.id}>
+                      <TableCell className="font-medium">{attendee.name}</TableCell>
+                      <TableCell>{attendee.phone}</TableCell>
+                      <TableCell>{attendee.region}</TableCell>
+                      <TableCell className="capitalize">{attendee.gender}</TableCell>
+                      <TableCell>
                         <span className={cn(
                           "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                           attendee.isCheckedOut 
@@ -144,42 +145,20 @@ const Dashboard = () => {
                               ? "Checked In" 
                               : "Not Checked In"}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex space-x-2">
-                          {!attendee.isCheckedIn && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleCheckIn(attendee.id)}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
-                            >
-                              <Check className="h-4 w-4 mr-1" /> Check In
-                            </Button>
-                          )}
-                          {attendee.isCheckedIn && !attendee.isCheckedOut && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleCheckOut(attendee.id)}
-                              className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                            >
-                              <LogOut className="h-4 w-4 mr-1" /> Check Out
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
+                      <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr className="border-b">
-                    <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-gray-500 py-6">
                       No attendees found matching your search.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
