@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { QrCode, Users, CalendarCheck } from "lucide-react";
+import { Users, CalendarCheck } from "lucide-react";
 
 const Index = () => {
   return (
@@ -16,7 +16,7 @@ const Index = () => {
                 Attendify
               </h1>
               <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl">
-                Streamline your attendance tracking with our powerful QR code-based system
+                Streamline your attendance tracking with our powerful monitoring system
               </p>
             </div>
             <div className="space-x-4">
@@ -25,9 +25,9 @@ const Index = () => {
                   View Dashboard
                 </Button>
               </Link>
-              <Link to="/scanner">
+              <Link to="/register">
                 <Button size="lg" variant="outline" className="mt-4">
-                  Scan QR Code
+                  Register Attendee
                 </Button>
               </Link>
             </div>
@@ -47,20 +47,7 @@ const Index = () => {
                 Everything you need to manage attendance efficiently
               </p>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3 lg:gap-10">
-              <Card className="relative overflow-hidden">
-                <CardContent className="flex flex-col items-center space-y-4 p-6">
-                  <div className="rounded-full bg-primary/10 p-4">
-                    <QrCode className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">QR Code Scanner</h3>
-                    <p className="text-sm text-gray-500">
-                      Quickly check-in and check-out attendees using QR codes
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:gap-10">
               <Card className="relative overflow-hidden">
                 <CardContent className="flex flex-col items-center space-y-4 p-6">
                   <div className="rounded-full bg-primary/10 p-4">
@@ -110,9 +97,9 @@ const Index = () => {
                   Register Attendees
                 </Button>
               </Link>
-              <Link to="/scanner">
+              <Link to="/dashboard">
                 <Button size="lg" variant="outline" className="mt-4">
-                  Open Scanner
+                  View Dashboard
                 </Button>
               </Link>
             </div>

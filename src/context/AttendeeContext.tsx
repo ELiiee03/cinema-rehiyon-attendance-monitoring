@@ -7,6 +7,8 @@ interface AttendeeContextType {
   attendees: Attendee[];
   addAttendee: (attendee: Omit<Attendee, "id" | "qrCode">) => Promise<Attendee>;
   toggleAttendeeStatus: (id: string) => Attendee | undefined;
+  checkInAttendee: (id: string) => Attendee | undefined;
+  checkOutAttendee: (id: string) => Attendee | undefined;
 }
 
 const AttendeeContext = createContext<AttendeeContextType | undefined>(undefined);
@@ -51,10 +53,44 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
     return updatedAttendee;
   };
 
+  const checkInAttendee = (id: string) => {
+    const attendee = attendees.find(a => a.id === id);
+    if (!attendee) return undefined;
+    
+    const updatedAttendee = updateAttendeeStatus(id, true);
+    
+    if (updatedAttendee) {
+      setAttendees(attendees.map(a => a.id === id ? updatedAttendee : a));
+    }
+    
+    return updatedAttendee;
+  };
+
+  const checkOutAttendee = (id: string) => {
+    const attendee = attendees.find(a => a.id === id);
+    if (!attendee || !attendee.isCheckedIn) return undefined;
+    
+    // First ensure they're checked in, then check them out
+    let updatedAttendee = updateAttendeeStatus(id, true);
+    if (updatedAttendee) {
+      updatedAttendee = {
+        ...updatedAttendee,
+        isCheckedOut: true,
+        checkOutTime: new Date().toISOString()
+      };
+      
+      setAttendees(attendees.map(a => a.id === id ? updatedAttendee! : a));
+    }
+    
+    return updatedAttendee;
+  };
+
   const value = {
     attendees,
     addAttendee,
-    toggleAttendeeStatus
+    toggleAttendeeStatus,
+    checkInAttendee,
+    checkOutAttendee
   };
 
   return <AttendeeContext.Provider value={value}>{children}</AttendeeContext.Provider>;

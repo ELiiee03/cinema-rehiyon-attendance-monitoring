@@ -10,7 +10,6 @@ import Layout from "./components/layout/Layout";
 
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import Scanner from "./pages/Scanner";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
@@ -27,7 +26,6 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/scanner" element={<Scanner />} />
               <Route path="/register" element={<Register />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

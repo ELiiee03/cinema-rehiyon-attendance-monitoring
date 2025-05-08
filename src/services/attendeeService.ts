@@ -79,12 +79,20 @@ export const updateAttendeeStatus = (id: string, isCheckedIn: boolean): Attendee
   
   if (isCheckedIn) {
     attendee.isCheckedIn = true;
-    attendee.isCheckedOut = false;
-    attendee.checkInTime = now;
-    attendee.checkOutTime = undefined;
+    if (!attendee.isCheckedOut) {
+      // Only update check-in time if they haven't checked out yet
+      attendee.checkInTime = now;
+    }
   } else {
+    // This is now a separate operation handled through checkOutAttendee
     attendee.isCheckedOut = true;
     attendee.checkOutTime = now;
+  }
+  
+  // Find the index of the attendee in the mock data and update it
+  const index = mockAttendees.findIndex(a => a.id === id);
+  if (index !== -1) {
+    mockAttendees[index] = attendee;
   }
   
   return attendee;

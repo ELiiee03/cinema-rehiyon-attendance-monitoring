@@ -8,7 +8,6 @@ export default function Navbar() {
   const navItems = [
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard" },
-    { name: "QR Scanner", path: "/scanner" },
     { name: "Register", path: "/register" },
   ];
 

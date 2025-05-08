@@ -63,21 +63,10 @@ const Register = () => {
       setIsSubmitting(false);
     }
   };
-  
-  const downloadQRCode = () => {
-    if (!registeredAttendee?.qrCode) return;
-    
-    const link = document.createElement('a');
-    link.href = registeredAttendee.qrCode;
-    link.download = `${registeredAttendee.name.replace(/\s+/g, '_')}_qrcode.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
+      <div className="md:col-span-3">
         <h1 className="text-2xl md:text-3xl font-bold text-primary mb-6">Register New Attendee</h1>
         
         <Card>
@@ -160,65 +149,17 @@ const Register = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
-      
-      <div>
-        <h2 className="text-xl font-semibold text-primary mb-6">Generated QR Code</h2>
         
-        <Card className="text-center">
-          <CardHeader>
-            <CardTitle className="text-sm">Scan to Check-In</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pb-6">
-            {registeredAttendee ? (
-              <>
-                <div className="bg-white p-3 rounded-md inline-block mx-auto">
-                  <img 
-                    src={registeredAttendee.qrCode} 
-                    alt="Attendee QR Code"
-                    className="w-48 h-48 mx-auto"
-                  />
-                </div>
-                
-                <div className="space-y-1 text-left">
-                  <p className="text-sm font-medium">{registeredAttendee.name}</p>
-                  <p className="text-xs text-gray-500">{registeredAttendee.email}</p>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={downloadQRCode}
-                >
-                  Download QR Code
-                </Button>
-              </>
-            ) : (
-              <div className="h-48 flex items-center justify-center">
-                <p className="text-gray-500 text-sm">
-                  QR code will appear here after registration
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card className="mt-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Instructions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              1. Complete the registration form
-            </p>
-            <p>
-              2. Download or share the generated QR code with the attendee
-            </p>
-            <p>
-              3. The attendee can use this QR code for check-in at the event
-            </p>
-          </CardContent>
-        </Card>
+        {registeredAttendee && (
+          <Card className="mt-6 text-center p-6">
+            <CardTitle className="text-lg mb-4">Registration Successful</CardTitle>
+            <div className="space-y-2">
+              <p className="font-medium">{registeredAttendee.name} has been registered</p>
+              <p className="text-sm text-gray-500">{registeredAttendee.email}</p>
+              <p className="text-sm text-gray-500">{registeredAttendee.phone}</p>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

@@ -10,5 +10,5 @@ export interface Attendee {
   isCheckedOut: boolean;
   checkInTime?: string;
   checkOutTime?: string;
-  qrCode: string;
+  qrCode: string;  // Keeping this for backward compatibility with existing data
 }
