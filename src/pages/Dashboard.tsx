@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAttendees } from "@/context/AttendeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { UserCheck, User, Users, LogOut } from "lucide-react";
+import { UserCheck, User, Users, LogOut, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -15,7 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ReloadIcon } from "@radix-ui/react-icons";
 
 const Dashboard = () => {
   const { attendees, loading, refreshAttendees } = useAttendees();
@@ -55,7 +54,7 @@ const Dashboard = () => {
             disabled={loading}
             title="Refresh data"
           >
-            {loading ? <ReloadIcon className="h-4 w-4 animate-spin" /> : <ReloadIcon className="h-4 w-4" />}
+            {loading ? <RotateCw className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
           </Button>
           <Input
             type="search"
@@ -124,7 +123,7 @@ const Dashboard = () => {
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center py-10">
-              <ReloadIcon className="h-6 w-6 animate-spin mr-2" />
+              <RotateCw className="h-6 w-6 animate-spin mr-2" />
               <span>Loading attendees...</span>
             </div>
           ) : (
