@@ -1,8 +1,19 @@
 import { Attendee } from "@/types";
-import { SupabaseAttendee } from "@/integrations/supabase/types";
-
-import { Attendee, SupabaseAttendee } from "@/types";
 import QRCode from "qrcode";
+
+// Define SupabaseAttendee interface locally
+interface SupabaseAttendee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  region: string;
+  is_checked_in: boolean;
+  is_checked_out: boolean;
+  check_in_time: string | null;
+  check_out_time: string | null;
+}
 import { supabase } from "@/integrations/supabase/client";
 import { createLog } from "./logService";
 
@@ -35,28 +46,10 @@ const mapToAttendee = async (supabaseAttendee: SupabaseAttendee): Promise<Attend
   };
 };
 
-// Helper function to map from Supabase format to our application format
-const mapToAttendee = async (supabaseAttendee: SupabaseAttendee): Promise<Attendee> => {
-  // Generate QR code
-  const qrCode = await QRCode.toDataURL(supabaseAttendee.id);
-  
-  return {
-    id: supabaseAttendee.id,
-    name: supabaseAttendee.name,
-    email: supabaseAttendee.email,
-    phone: supabaseAttendee.phone,
-    gender: supabaseAttendee.gender as "male" | "female" | "other",
-    region: supabaseAttendee.region,
-    isCheckedIn: supabaseAttendee.is_checked_in,
-    isCheckedOut: supabaseAttendee.is_checked_out,
-    checkInTime: supabaseAttendee.check_in_time,
-    checkOutTime: supabaseAttendee.check_out_time,
-    qrCode
-  };
-};
-
-export const getAttendees = async (): Promise<Attendee[]> => {
-  const { data, error } = await supabase.from("attendees").select("*");
+export const getAllAttendees = async (): Promise<Attendee[]> => {
+  const { data, error } = await supabase
+    .from("attendees")
+    .select("*");
   
   if (error) {
     console.error("Error fetching attendees:", error);

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Attendee, AttendanceLog } from "@/types";
-import { getAttendees, createAttendee, updateAttendeeStatus } from "@/services/attendeeService";
+import { getAllAttendees, createAttendee, updateAttendeeStatus } from "@/services/attendeeService";
 import { getLogs, getLogsByAttendeeId } from "@/services/logService";
 
 interface AttendeeContextType {
@@ -42,7 +42,7 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
   const refreshAttendees = async () => {
     try {
       setLoading(true);
-      const data = await getAttendees();
+      const data = await getAllAttendees();
       setAttendees(data);
       setError(null);
     } catch (err) {
