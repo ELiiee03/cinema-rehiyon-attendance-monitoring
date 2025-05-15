@@ -122,6 +122,7 @@ export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Pr
     .single();
     
   if (!currentAttendee) {
+    console.error("Attendee not found:", id);
     return undefined;
   }
   
@@ -157,7 +158,18 @@ export const updateAttendeeStatus = async (id: string, isCheckedIn: boolean): Pr
   }
   
   // Create a log entry for this action
-  await createLog(id, currentAttendee.name, action);
+  try {
+    console.log(`Creating log entry for ${currentAttendee.name}, action: ${action}`);
+    const logEntry = await createLog(id, currentAttendee.name, action);
+    
+    if (logEntry) {
+      console.log(`Successfully created log entry:`, logEntry);
+    } else {
+      console.error(`Failed to create log entry for ${currentAttendee.name}, action: ${action}`);
+    }
+  } catch (e) {
+    console.error(`Error creating log entry for ${currentAttendee.name}:`, e);
+  }
   
   // Use the mapToAttendee function for consistent mapping
   return mapToAttendee(data as SupabaseAttendee);

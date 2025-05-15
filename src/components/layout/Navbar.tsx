@@ -21,7 +21,7 @@ export default function Navbar() {
                 alt="Attendify Logo" 
                 className="h-10" 
               />
-              <span className="font-bold text-xl tracking-wider hidden sm:inline bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent transition-all duration-300 hover:scale-105 hover:from-blue-600 hover:to-primary">Attendify</span>
+              <span className="font-bold text-xl tracking-wider hidden sm:inline bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent transition-all duration-300 hover:scale-105 hover:from-blue-600 hover:to-primary">Cinema Rehyon</span>
             </Link>
           </div>
           

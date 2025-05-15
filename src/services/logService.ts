@@ -15,32 +15,44 @@ const mapToAttendanceLog = (supabaseLog: SupabaseAttendanceLog): AttendanceLog =
 };
 
 export const getLogs = async (): Promise<AttendanceLog[]> => {
-  const { data, error } = await supabase
-    .from("attendance_logs")
-    .select("*")
-    .order("timestamp", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching attendance logs:", error);
+  try {
+    const { data, error } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .order("timestamp", { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching attendance logs:", error.message);
+      console.error("Error details:", JSON.stringify(error));
+      return [];
+    }
+    
+    return data.map(log => mapToAttendanceLog(log as SupabaseAttendanceLog));
+  } catch (e) {
+    console.error("Unexpected error in getLogs:", e);
     return [];
   }
-  
-  return data.map(log => mapToAttendanceLog(log as SupabaseAttendanceLog));
 };
 
 export const getLogsByAttendeeId = async (attendeeId: string): Promise<AttendanceLog[]> => {
-  const { data, error } = await supabase
-    .from("attendance_logs")
-    .select("*")
-    .eq("attendee_id", attendeeId)
-    .order("timestamp", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching attendance logs for attendee:", error);
+  try {
+    const { data, error } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .eq("attendee_id", attendeeId)
+      .order("timestamp", { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching attendance logs for attendee:", error.message);
+      console.error("Error details:", JSON.stringify(error));
+      return [];
+    }
+    
+    return data.map(log => mapToAttendanceLog(log as SupabaseAttendanceLog));
+  } catch (e) {
+    console.error("Unexpected error in getLogsByAttendeeId:", e);
     return [];
   }
-  
-  return data.map(log => mapToAttendanceLog(log as SupabaseAttendanceLog));
 };
 
 export const createLog = async (
@@ -48,25 +60,36 @@ export const createLog = async (
   attendeeName: string, 
   action: "check_in" | "check_out"
 ): Promise<AttendanceLog | undefined> => {
-  const now = new Date().toISOString();
-  
-  const logData = {
-    attendee_id: attendeeId,
-    attendee_name: attendeeName,
-    action,
-    timestamp: now
-  };
-  
-  const { data, error } = await supabase
-    .from("attendance_logs")
-    .insert([logData])
-    .select()
-    .single();
-  
-  if (error) {
-    console.error("Error creating attendance log:", error);
+  try {
+    const now = new Date().toISOString();
+    
+    const logData = {
+      attendee_id: attendeeId,
+      attendee_name: attendeeName,
+      action,
+      timestamp: now
+    };
+    
+    console.log("Attempting to create log entry:", logData);
+    
+    const { data, error } = await supabase
+      .from("attendance_logs")
+      .insert([logData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error creating attendance log:", error.message);
+      console.error("Error details:", JSON.stringify(error));
+      console.error("Failed log data:", JSON.stringify(logData));
+      return undefined;
+    }
+    
+    console.log("Successfully created log entry:", data);
+    return mapToAttendanceLog(data as SupabaseAttendanceLog);
+  } catch (e) {
+    console.error("Unexpected error in createLog:", e);
+    console.error("Error details:", JSON.stringify(e, Object.getOwnPropertyNames(e)));
     return undefined;
   }
-  
-  return mapToAttendanceLog(data as SupabaseAttendanceLog);
 }; 

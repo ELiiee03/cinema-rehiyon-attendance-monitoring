@@ -51,8 +51,25 @@ const Dashboard = () => {
     log.attendeeName.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const checkedInCount = attendees.filter(a => a.isCheckedIn).length;
-  const checkedOutCount = attendees.filter(a => a.isCheckedOut).length;
+  // Helper function to determine the current status based on check-in/out times and logs
+  const getAttendeeStatus = (attendee: Attendee) => {
+    // Get the most recent action based on timestamps
+    const lastCheckInTime = attendee.checkInTime ? new Date(attendee.checkInTime).getTime() : 0;
+    const lastCheckOutTime = attendee.checkOutTime ? new Date(attendee.checkOutTime).getTime() : 0;
+    
+    if (lastCheckInTime === 0 && lastCheckOutTime === 0) {
+      return "not_checked_in";
+    } else if (lastCheckOutTime > lastCheckInTime) {
+      return "checked_out";
+    } else {
+      return "checked_in";
+    }
+  };
+  
+  // Count attendees based on their current status
+  const checkedInCount = attendees.filter(a => getAttendeeStatus(a) === "checked_in").length;
+  const checkedOutCount = attendees.filter(a => getAttendeeStatus(a) === "checked_out").length;
+  const notCheckedInCount = attendees.filter(a => getAttendeeStatus(a) === "not_checked_in").length;
 
   const formatDateTime = (dateTimeStr?: string) => {
     if (!dateTimeStr) return "—";
@@ -81,7 +98,7 @@ const Dashboard = () => {
         const completeCycles: AttendanceLog[] = [];
         
         // Check if the attendee has both check-in and check-out times
-        if (attendeeData.isCheckedOut && attendeeData.checkInTime && attendeeData.checkOutTime) {
+        if (attendeeData.checkInTime && attendeeData.checkOutTime) {
           // Only create logs when there's a complete check-in and check-out cycle
           // Create synthetic check-in log
           const checkInLog: AttendanceLog = {
@@ -124,19 +141,23 @@ const Dashboard = () => {
 
   const exportToExcel = () => {
     // Format data for Excel
-    const data = attendees.map(attendee => ({
-      Name: attendee.name,
-      'Contact Number': attendee.phone,
-      Region: attendee.region,
-      Gender: attendee.gender,
-      Status: attendee.isCheckedOut 
-        ? "Checked Out" 
-        : attendee.isCheckedIn 
-          ? "Checked In" 
-          : "Not Checked In",
-      'Check-In Time': formatDateTime(attendee.checkInTime),
-      'Check-Out Time': formatDateTime(attendee.checkOutTime),
-    }));
+    const data = attendees.map(attendee => {
+      const status = getAttendeeStatus(attendee);
+      
+      return {
+        Name: attendee.name,
+        'Contact Number': attendee.phone,
+        Region: attendee.region,
+        Gender: attendee.gender,
+        Status: status === "checked_out" 
+          ? "Checked Out" 
+          : status === "checked_in" 
+            ? "Checked In" 
+            : "Not Checked In",
+        'Check-In Time': formatDateTime(attendee.checkInTime),
+        'Check-Out Time': formatDateTime(attendee.checkOutTime),
+      };
+    });
     
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(data);
@@ -186,6 +207,30 @@ const Dashboard = () => {
     handleRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  // Helper function to get status badge styling
+  const getStatusBadgeStyle = (status: string) => {
+    switch(status) {
+      case "checked_out":
+        return "bg-blue-100 text-blue-800";
+      case "checked_in":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-red-100 text-red-800";
+    }
+  };
+  
+  // Helper function to get status display text
+  const getStatusDisplayText = (status: string) => {
+    switch(status) {
+      case "checked_out":
+        return "Checked Out";
+      case "checked_in":
+        return "Checked In";
+      default:
+        return "Not Checked In";
+    }
+  };
   
   return (
     <div className="space-y-6">
@@ -247,7 +292,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{attendees.length - checkedInCount}</span>
+              <span className="text-3xl font-bold">{notCheckedInCount}</span>
               <User className="h-6 w-6 opacity-75" />
             </div>
           </CardContent>
@@ -343,36 +388,32 @@ const Dashboard = () => {
                     </TableHeader>
                     <TableBody>
                       {filteredAttendees.length > 0 ? (
-                        filteredAttendees.map((attendee) => (
-                          <TableRow 
-                            key={attendee.id} 
-                            onClick={() => handleAttendeeRowClick(attendee.id, attendee.name)}
-                            className="cursor-pointer hover:bg-gray-50"
-                          >
-                            <TableCell className="font-medium">{attendee.name}</TableCell>
-                            <TableCell>{attendee.phone}</TableCell>
-                            <TableCell>{attendee.region}</TableCell>
-                            <TableCell className="capitalize">{attendee.gender}</TableCell>
-                            <TableCell>
-                              <span className={cn(
-                                "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                                attendee.isCheckedOut 
-                                  ? "bg-blue-100 text-blue-800" 
-                                  : attendee.isCheckedIn 
-                                    ? "bg-green-100 text-green-800" 
-                                    : "bg-red-100 text-red-800"
-                              )}>
-                                {attendee.isCheckedOut 
-                                  ? "Checked Out" 
-                                  : attendee.isCheckedIn 
-                                    ? "Checked In" 
-                                    : "Not Checked In"}
-                              </span>
-                            </TableCell>
-                            <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
-                            <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
-                          </TableRow>
-                        ))
+                        filteredAttendees.map((attendee) => {
+                          const status = getAttendeeStatus(attendee);
+                          
+                          return (
+                            <TableRow 
+                              key={attendee.id} 
+                              onClick={() => handleAttendeeRowClick(attendee.id, attendee.name)}
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <TableCell className="font-medium">{attendee.name}</TableCell>
+                              <TableCell>{attendee.phone}</TableCell>
+                              <TableCell>{attendee.region}</TableCell>
+                              <TableCell className="capitalize">{attendee.gender}</TableCell>
+                              <TableCell>
+                                <span className={cn(
+                                  "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                                  getStatusBadgeStyle(status)
+                                )}>
+                                  {getStatusDisplayText(status)}
+                                </span>
+                              </TableCell>
+                              <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
+                              <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
+                            </TableRow>
+                          );
+                        })
                       ) : (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center text-gray-500 py-6">
@@ -453,20 +494,14 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Status:</p>
-                  <p className={cn(
-                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                    selectedAttendeeData.isCheckedOut 
-                      ? "bg-blue-100 text-blue-800" 
-                      : selectedAttendeeData.isCheckedIn 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-red-100 text-red-800"
-                  )}>
-                    {selectedAttendeeData.isCheckedOut 
-                      ? "Checked Out" 
-                      : selectedAttendeeData.isCheckedIn 
-                        ? "Checked In" 
-                        : "Not Checked In"}
-                  </p>
+                  {selectedAttendeeData && (
+                    <p className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                      getStatusBadgeStyle(getAttendeeStatus(selectedAttendeeData))
+                    )}>
+                      {getStatusDisplayText(getAttendeeStatus(selectedAttendeeData))}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Check-in Time:</p>
