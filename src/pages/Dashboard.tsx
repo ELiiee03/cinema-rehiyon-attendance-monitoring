@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useAttendees } from "@/context/AttendeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { UserCheck, User, Users, LogOut, FileDown, RefreshCw, ClipboardList, X, RotateCw } from "lucide-react";
+import { UserCheck, User, Users, LogOut, FileDown, RefreshCw, ClipboardList, X, RotateCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -20,7 +21,7 @@ import {
   Tabs, 
   TabsContent, 
   TabsList, 
-  TabsTrigger 
+  TabsTrigger
 } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -28,10 +29,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AttendanceLog, Attendee } from "@/types";
 
 const Dashboard = () => {
-  const { attendees, logs, loading, logsLoading, refreshAttendees, refreshLogs, getAttendeeLogsById } = useAttendees();
+  const { attendees, logs, loading, logsLoading, refreshAttendees, refreshLogs, getAttendeeLogsById, deleteAttendee } = useAttendees();
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("attendees");
@@ -40,6 +51,9 @@ const Dashboard = () => {
   const [attendeeLogs, setAttendeeLogs] = useState<AttendanceLog[]>([]);
   const [loadingAttendeeLogs, setLoadingAttendeeLogs] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [attendeeToDelete, setAttendeeToDelete] = useState<{ id: string, name: string } | null>(null);
 
   const filteredAttendees = attendees.filter(attendee => 
     attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -194,12 +208,42 @@ const Dashboard = () => {
     // Save to file
     XLSX.writeFile(wb, fileName);
   };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refreshAttendees();
     await refreshLogs();
     setIsRefreshing(false);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, attendeeId: string, attendeeName: string) => {
+    e.stopPropagation(); // Prevent row click from firing
+    setAttendeeToDelete({ id: attendeeId, name: attendeeName });
+    setDeleteConfirmationOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!attendeeToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const success = await deleteAttendee(attendeeToDelete.id);
+      if (success) {
+        toast.success(`${attendeeToDelete.name} has been deleted`);
+        // Close the modal if the deleted attendee is currently selected
+        if (selectedAttendee === attendeeToDelete.name) {
+          setIsModalOpen(false);
+        }
+      } else {
+        toast.error(`Failed to delete ${attendeeToDelete.name}`);
+      }
+    } catch (error) {
+      console.error("Error deleting attendee:", error);
+      toast.error("An error occurred while deleting the attendee");
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmationOpen(false);
+      setAttendeeToDelete(null);
+    }
   };
 
   // Auto-refresh on component mount
@@ -374,8 +418,7 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
+                  <Table>                    <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Contact Number</TableHead>
@@ -384,6 +427,7 @@ const Dashboard = () => {
                         <TableHead>Status</TableHead>
                         <TableHead>Check-In Time</TableHead>
                         <TableHead>Check-Out Time</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -411,12 +455,23 @@ const Dashboard = () => {
                               </TableCell>
                               <TableCell>{formatDateTime(attendee.checkInTime)}</TableCell>
                               <TableCell>{formatDateTime(attendee.checkOutTime)}</TableCell>
+                              <TableCell>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={(e) => handleDeleteClick(e, attendee.id, attendee.name)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           );
                         })
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-gray-500 py-6">
+                          <TableCell colSpan={8} className="text-center text-gray-500 py-6">
                             {searchTerm ? "No attendees found matching your search." : "No attendees registered yet."}
                           </TableCell>
                         </TableRow>
@@ -557,6 +612,36 @@ const Dashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {attendeeToDelete?.name}'s record and all associated attendance logs. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Attendee, AttendanceLog } from "@/types";
-import { getAllAttendees, createAttendee, updateAttendeeStatus } from "@/services/attendeeService";
+import { getAllAttendees, createAttendee, updateAttendeeStatus, deleteAttendee } from "@/services/attendeeService";
 import { getLogs, getLogsByAttendeeId } from "@/services/logService";
 
 interface AttendeeContextType {
@@ -13,6 +13,7 @@ interface AttendeeContextType {
   toggleAttendeeStatus: (id: string) => Promise<Attendee | undefined>;
   checkInAttendee: (id: string) => Promise<Attendee | undefined>;
   checkOutAttendee: (id: string) => Promise<Attendee | undefined>;
+  deleteAttendee: (id: string) => Promise<boolean>;
   refreshAttendees: () => Promise<void>;
   refreshLogs: () => Promise<void>;
   getAttendeeLogsById: (id: string) => Promise<AttendanceLog[]>;
@@ -132,7 +133,6 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
       return undefined;
     }
   };
-
   const checkOutAttendee = async (id: string): Promise<Attendee | undefined> => {
     const attendee = attendees.find(a => a.id === id);
     if (!attendee || !attendee.isCheckedIn) return undefined;
@@ -152,6 +152,24 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
     }
   };
 
+  const handleDeleteAttendee = async (id: string): Promise<boolean> => {
+    try {
+      const success = await deleteAttendee(id);
+      
+      if (success) {
+        // Remove the attendee from the local state
+        setAttendees(attendees.filter(a => a.id !== id));
+        
+        // Also filter out logs associated with this attendee
+        setLogs(logs.filter(log => log.attendeeId !== id));
+      }
+      
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to delete attendee"));
+      return false;
+    }
+  };
   const value = {
     attendees,
     logs,
@@ -162,6 +180,7 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
     toggleAttendeeStatus,
     checkInAttendee,
     checkOutAttendee,
+    deleteAttendee: handleDeleteAttendee,
     refreshAttendees,
     refreshLogs,
     getAttendeeLogsById

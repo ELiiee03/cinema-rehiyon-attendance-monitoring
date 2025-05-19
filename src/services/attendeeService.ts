@@ -1,5 +1,8 @@
 import { Attendee } from "@/types";
 import QRCode from "qrcode";
+import { deleteAttendee } from "./deleteAttendeeService";
+
+export { deleteAttendee };
 
 // Define SupabaseAttendee interface locally
 interface SupabaseAttendee {
