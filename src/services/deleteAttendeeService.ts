@@ -31,3 +31,35 @@ export const deleteAttendee = async (id: string): Promise<boolean> => {
     return false;
   }
 };
+
+export const deleteAllAttendees = async (): Promise<boolean> => {
+  try {
+    // First, delete all attendance logs
+    const { error: logsError } = await supabase
+      .from("attendance_logs")
+      .delete()
+      .gte('id', '0'); // This will match all logs
+    
+    if (logsError) {
+      console.error("Error deleting all attendance logs:", logsError);
+      return false;
+    }
+    
+    // Then delete all attendees
+    const { error } = await supabase
+      .from("attendees")
+      .delete()
+      .gte('id', '0'); // This will match all attendees
+    
+    if (error) {
+      console.error("Error deleting all attendees:", error);
+      return false;
+    }
+    
+    console.log("Successfully deleted all attendees and their logs");
+    return true;
+  } catch (e) {
+    console.error("Unexpected error in deleteAllAttendees:", e);
+    return false;
+  }
+};

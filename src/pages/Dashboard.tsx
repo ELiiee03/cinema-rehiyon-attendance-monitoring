@@ -42,7 +42,7 @@ import {
 import { AttendanceLog, Attendee } from "@/types";
 
 const Dashboard = () => {
-  const { attendees, logs, loading, logsLoading, refreshAttendees, refreshLogs, getAttendeeLogsById, deleteAttendee } = useAttendees();
+  const { attendees, logs, loading, logsLoading, refreshAttendees, refreshLogs, getAttendeeLogsById, deleteAttendee, deleteAllAttendees } = useAttendees();
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("attendees");
@@ -52,7 +52,9 @@ const Dashboard = () => {
   const [loadingAttendeeLogs, setLoadingAttendeeLogs] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [deleteAllConfirmationOpen, setDeleteAllConfirmationOpen] = useState(false);
   const [attendeeToDelete, setAttendeeToDelete] = useState<{ id: string, name: string } | null>(null);
 
   const filteredAttendees = attendees.filter(attendee => 
@@ -93,7 +95,6 @@ const Dashboard = () => {
       return "Invalid date";
     }
   };
-  
   const handleAttendeeRowClick = async (attendeeId: string, attendeeName: string) => {
     setSelectedAttendee(attendeeName);
     setLoadingAttendeeLogs(true);
@@ -104,16 +105,24 @@ const Dashboard = () => {
     setSelectedAttendeeData(attendeeData);
     
     try {
-      let logs = await getAttendeeLogsById(attendeeId);
+      console.log(`Fetching logs for attendee: ${attendeeName} (${attendeeId})`);
       
-      // If no logs are found but attendee has check-in/check-out data, create synthetic logs
-      if (attendeeData) {
-        // Initialize an array for complete attendance cycles
-        const completeCycles: AttendanceLog[] = [];
+      // Fetch logs directly from the attendance_logs table using the attendee_id as foreign key
+      let logs = await getAttendeeLogsById(attendeeId);
+      console.log(`Retrieved ${logs.length} logs from database for ${attendeeName}`);
+      
+      // If no logs are found but attendee has check-in/check-out data in the attendees table,
+      // create synthetic logs based on the timestamps in the attendee record
+      if (logs.length === 0 && attendeeData) {
+        console.log(`No logs found in database, checking for synthetic log creation`);
         
-        // Check if the attendee has both check-in and check-out times
+        // Initialize an array for synthetic logs
+        const syntheticLogs: AttendanceLog[] = [];
+        
+        // Check if the attendee has both check-in and check-out times in their record
         if (attendeeData.checkInTime && attendeeData.checkOutTime) {
-          // Only create logs when there's a complete check-in and check-out cycle
+          console.log(`Creating synthetic logs from attendee record timestamps`);
+          
           // Create synthetic check-in log
           const checkInLog: AttendanceLog = {
             id: `synthetic-checkin-${attendeeId}`,
@@ -134,14 +143,25 @@ const Dashboard = () => {
             createdAt: attendeeData.checkOutTime
           };
           
-          // Add both logs to the complete cycles array
-          completeCycles.push(checkInLog, checkOutLog);
+          // Add both logs to the synthetic logs array
+          syntheticLogs.push(checkInLog, checkOutLog);
+          console.log(`Added ${syntheticLogs.length} synthetic logs`);
           
-          // If we have no logs from the database but we have complete cycles
-          // from the attendee data, use those
-          if (logs.length === 0 && completeCycles.length > 0) {
-            logs = completeCycles;
-          }
+          // Use synthetic logs when no database logs exist
+          logs = syntheticLogs;
+        } else if (attendeeData.checkInTime) {
+          // If only check-in time exists, create just a check-in log
+          const checkInLog: AttendanceLog = {
+            id: `synthetic-checkin-${attendeeId}`,
+            attendeeId: attendeeId,
+            attendeeName: attendeeName,
+            action: "check_in",
+            timestamp: attendeeData.checkInTime,
+            createdAt: attendeeData.checkInTime
+          };
+          
+          syntheticLogs.push(checkInLog);
+          logs = syntheticLogs;
         }
       }
       
@@ -220,7 +240,6 @@ const Dashboard = () => {
     setAttendeeToDelete({ id: attendeeId, name: attendeeName });
     setDeleteConfirmationOpen(true);
   };
-
   const handleConfirmDelete = async () => {
     if (!attendeeToDelete) return;
     
@@ -243,6 +262,30 @@ const Dashboard = () => {
       setIsDeleting(false);
       setDeleteConfirmationOpen(false);
       setAttendeeToDelete(null);
+    }
+  };
+
+  const handleDeleteAllClick = () => {
+    setDeleteAllConfirmationOpen(true);
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      const success = await deleteAllAttendees();
+      if (success) {
+        toast.success("All attendees have been deleted");
+        // Close the attendee details modal if open
+        setIsModalOpen(false);
+      } else {
+        toast.error("Failed to delete all attendees");
+      }
+    } catch (error) {
+      console.error("Error deleting all attendees:", error);
+      toast.error("An error occurred while deleting all attendees");
+    } finally {
+      setIsDeletingAll(false);
+      setDeleteAllConfirmationOpen(false);
     }
   };
 
@@ -378,18 +421,29 @@ const Dashboard = () => {
             >
               <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
-            </Button>
-            {activeTab === 'attendees' ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={exportToExcel}
-                disabled={loading || attendees.length === 0}
-                className="flex items-center gap-1"
-              >
-                <FileDown className="h-4 w-4 mr-1" />
-                Export Attendees
-              </Button>
+            </Button>            {activeTab === 'attendees' ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportToExcel}
+                  disabled={loading || attendees.length === 0}
+                  className="flex items-center gap-1"
+                >
+                  <FileDown className="h-4 w-4 mr-1" />
+                  Export Attendees
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleDeleteAllClick}
+                  disabled={loading || attendees.length === 0}
+                  className="flex items-center gap-1"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete All
+                </Button>
+              </>
             ) : (
               <Button 
                 variant="outline" 
@@ -535,8 +589,9 @@ const Dashboard = () => {
       </Tabs>
       
       {/* Attendance Log History Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[600px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex justify-between items-center">
               <span>Attendance History: {selectedAttendee}</span>
@@ -612,8 +667,7 @@ const Dashboard = () => {
           )}
         </DialogContent>
       </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -637,6 +691,36 @@ const Dashboard = () => {
                 </>
               ) : (
                 "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <AlertDialog open={deleteAllConfirmationOpen} onOpenChange={setDeleteAllConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all attendees?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete ALL attendee records and their attendance logs.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDeleteAll}
+              disabled={isDeletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingAll ? (
+                <>
+                  <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting All...
+                </>
+              ) : (
+                "Delete All"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

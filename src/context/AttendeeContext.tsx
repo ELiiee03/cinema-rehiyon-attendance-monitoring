@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Attendee, AttendanceLog } from "@/types";
-import { getAllAttendees, createAttendee, updateAttendeeStatus, deleteAttendee } from "@/services/attendeeService";
+import { getAllAttendees, createAttendee, updateAttendeeStatus, deleteAttendee, deleteAllAttendees } from "@/services/attendeeService";
 import { getLogs, getLogsByAttendeeId } from "@/services/logService";
 
 interface AttendeeContextType {
@@ -14,6 +14,7 @@ interface AttendeeContextType {
   checkInAttendee: (id: string) => Promise<Attendee | undefined>;
   checkOutAttendee: (id: string) => Promise<Attendee | undefined>;
   deleteAttendee: (id: string) => Promise<boolean>;
+  deleteAllAttendees: () => Promise<boolean>;
   refreshAttendees: () => Promise<void>;
   refreshLogs: () => Promise<void>;
   getAttendeeLogsById: (id: string) => Promise<AttendanceLog[]>;
@@ -151,7 +152,6 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
       return undefined;
     }
   };
-
   const handleDeleteAttendee = async (id: string): Promise<boolean> => {
     try {
       const success = await deleteAttendee(id);
@@ -170,7 +170,23 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
       return false;
     }
   };
-  const value = {
+
+  const handleDeleteAllAttendees = async (): Promise<boolean> => {
+    try {
+      const success = await deleteAllAttendees();
+      
+      if (success) {
+        // Clear all attendees and logs from the local state
+        setAttendees([]);
+        setLogs([]);
+      }
+      
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to delete all attendees"));
+      return false;
+    }
+  };  const value = {
     attendees,
     logs,
     loading,
@@ -181,6 +197,7 @@ export function AttendeeProvider({ children }: AttendeeProviderProps) {
     checkInAttendee,
     checkOutAttendee,
     deleteAttendee: handleDeleteAttendee,
+    deleteAllAttendees: handleDeleteAllAttendees,
     refreshAttendees,
     refreshLogs,
     getAttendeeLogsById

@@ -36,6 +36,7 @@ export const getLogs = async (): Promise<AttendanceLog[]> => {
 
 export const getLogsByAttendeeId = async (attendeeId: string): Promise<AttendanceLog[]> => {
   try {
+    // Fetch logs from the attendance_logs table where attendee_id matches
     const { data, error } = await supabase
       .from("attendance_logs")
       .select("*")
@@ -48,6 +49,9 @@ export const getLogsByAttendeeId = async (attendeeId: string): Promise<Attendanc
       return [];
     }
     
+    console.log(`Retrieved ${data.length} logs for attendee ID ${attendeeId}`);
+    
+    // Map the Supabase data format to our application format
     return data.map(log => mapToAttendanceLog(log as SupabaseAttendanceLog));
   } catch (e) {
     console.error("Unexpected error in getLogsByAttendeeId:", e);
