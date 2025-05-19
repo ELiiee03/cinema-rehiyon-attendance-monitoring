@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAttendees } from "@/context/AttendeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { UserCheck, User, Users, LogOut, FileDown, RefreshCw, ClipboardList, X, RotateCw, Trash2 } from "lucide-react";
+import { UserCheck, User, Users, LogOut, FileDown, RefreshCw, ClipboardList, X, RotateCw, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
@@ -56,16 +56,96 @@ const Dashboard = () => {
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [deleteAllConfirmationOpen, setDeleteAllConfirmationOpen] = useState(false);
   const [attendeeToDelete, setAttendeeToDelete] = useState<{ id: string, name: string } | null>(null);
-
-  const filteredAttendees = attendees.filter(attendee => 
-    attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    attendee.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    attendee.region.toLowerCase().includes(searchTerm.toLowerCase())
-  );
   
-  const filteredLogs = logs.filter(log => 
-    log.attendeeName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Pagination states
+  const [currentAttendeePage, setCurrentAttendeePage] = useState(1);
+  const [currentLogsPage, setCurrentLogsPage] = useState(1);
+  const [currentAttendeeLogsPage, setCurrentAttendeeLogsPage] = useState(1);
+  const recordsPerPage = 10;  const filteredAttendees = attendees
+    .filter(attendee => 
+      attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      attendee.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      attendee.region.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Sort by the most recent activity (either check-in or check-out)
+      const aLatestTime = a.checkOutTime 
+        ? new Date(a.checkOutTime).getTime() 
+        : a.checkInTime 
+          ? new Date(a.checkInTime).getTime() 
+          : 0;
+      
+      const bLatestTime = b.checkOutTime 
+        ? new Date(b.checkOutTime).getTime() 
+        : b.checkInTime 
+          ? new Date(b.checkInTime).getTime() 
+          : 0;
+      
+      // Sort in descending order (latest first)
+      return bLatestTime - aLatestTime;
+    });
+  
+  const filteredLogs = logs
+    .filter(log => 
+      log.attendeeName.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Sort by timestamp in descending order (latest first)
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+  
+  // Pagination calculations
+  const indexOfLastAttendee = currentAttendeePage * recordsPerPage;
+  const indexOfFirstAttendee = indexOfLastAttendee - recordsPerPage;
+  const currentAttendees = filteredAttendees.slice(indexOfFirstAttendee, indexOfLastAttendee);
+  const totalAttendeePages = Math.ceil(filteredAttendees.length / recordsPerPage);
+  
+  const indexOfLastLog = currentLogsPage * recordsPerPage;
+  const indexOfFirstLog = indexOfLastLog - recordsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+  const totalLogPages = Math.ceil(filteredLogs.length / recordsPerPage);
+  
+  const indexOfLastAttendeeLog = currentAttendeeLogsPage * recordsPerPage;
+  const indexOfFirstAttendeeLog = indexOfLastAttendeeLog - recordsPerPage;
+  const currentAttendeeLogs = attendeeLogs.slice(indexOfFirstAttendeeLog, indexOfLastAttendeeLog);
+  const totalAttendeeLogPages = Math.ceil(attendeeLogs.length / recordsPerPage);
+  
+  // Pagination navigation functions
+  const nextAttendeePage = () => {
+    if (currentAttendeePage < totalAttendeePages) {
+      setCurrentAttendeePage(currentAttendeePage + 1);
+    }
+  };
+  
+  const prevAttendeePage = () => {
+    if (currentAttendeePage > 1) {
+      setCurrentAttendeePage(currentAttendeePage - 1);
+    }
+  };
+  
+  const nextLogsPage = () => {
+    if (currentLogsPage < totalLogPages) {
+      setCurrentLogsPage(currentLogsPage + 1);
+    }
+  };
+  
+  const prevLogsPage = () => {
+    if (currentLogsPage > 1) {
+      setCurrentLogsPage(currentLogsPage - 1);
+    }
+  };
+  
+  const nextAttendeeLogsPage = () => {
+    if (currentAttendeeLogsPage < totalAttendeeLogPages) {
+      setCurrentAttendeeLogsPage(currentAttendeeLogsPage + 1);
+    }
+  };
+  
+  const prevAttendeeLogsPage = () => {
+    if (currentAttendeeLogsPage > 1) {
+      setCurrentAttendeeLogsPage(currentAttendeeLogsPage - 1);
+    }
+  };
   
   // Helper function to determine the current status based on check-in/out times and logs
   const getAttendeeStatus = (attendee: Attendee) => {
@@ -94,11 +174,11 @@ const Dashboard = () => {
     } catch (error) {
       return "Invalid date";
     }
-  };
-  const handleAttendeeRowClick = async (attendeeId: string, attendeeName: string) => {
+  };  const handleAttendeeRowClick = async (attendeeId: string, attendeeName: string) => {
     setSelectedAttendee(attendeeName);
     setLoadingAttendeeLogs(true);
     setIsModalOpen(true);
+    setCurrentAttendeeLogsPage(1); // Reset attendee logs pagination
     
     // Find the full attendee data
     const attendeeData = attendees.find(a => a.id === attendeeId) || null;
@@ -110,8 +190,7 @@ const Dashboard = () => {
       // Fetch logs directly from the attendance_logs table using the attendee_id as foreign key
       let logs = await getAttendeeLogsById(attendeeId);
       console.log(`Retrieved ${logs.length} logs from database for ${attendeeName}`);
-      
-      // If no logs are found but attendee has check-in/check-out data in the attendees table,
+        // If no logs are found but attendee has check-in/check-out data in the attendees table,
       // create synthetic logs based on the timestamps in the attendee record
       if (logs.length === 0 && attendeeData) {
         console.log(`No logs found in database, checking for synthetic log creation`);
@@ -165,17 +244,39 @@ const Dashboard = () => {
         }
       }
       
-      setAttendeeLogs(logs);
+      // Sort logs by timestamp in descending order (newest first)
+      const sortedLogs = [...logs].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      setAttendeeLogs(sortedLogs);
     } catch (error) {
       console.error("Error fetching attendee logs:", error);
     } finally {
       setLoadingAttendeeLogs(false);
     }
   };
-
   const exportToExcel = () => {
+    // Sort attendees by most recent activity for export
+    const sortedAttendees = [...attendees].sort((a, b) => {
+      const aLatestTime = a.checkOutTime 
+        ? new Date(a.checkOutTime).getTime() 
+        : a.checkInTime 
+          ? new Date(a.checkInTime).getTime() 
+          : 0;
+      
+      const bLatestTime = b.checkOutTime 
+        ? new Date(b.checkOutTime).getTime() 
+        : b.checkInTime 
+          ? new Date(b.checkInTime).getTime() 
+          : 0;
+      
+      // Sort in descending order (latest first)
+      return bLatestTime - aLatestTime;
+    });
+    
     // Format data for Excel
-    const data = attendees.map(attendee => {
+    const data = sortedAttendees.map(attendee => {
       const status = getAttendeeStatus(attendee);
       
       return {
@@ -206,10 +307,14 @@ const Dashboard = () => {
     // Save to file
     XLSX.writeFile(wb, fileName);
   };
-  
-  const exportLogsToExcel = () => {
+    const exportLogsToExcel = () => {
+    // Sort logs by timestamp in descending order for export
+    const sortedLogs = [...logs].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    
     // Format data for Excel
-    const data = logs.map(log => ({
+    const data = sortedLogs.map(log => ({
       'Attendee Name': log.attendeeName,
       'Check-In Time': log.action === 'check_in' ? formatDateTime(log.timestamp) : '—',
       'Check-Out Time': log.action === 'check_out' ? formatDateTime(log.timestamp) : '—',
@@ -337,13 +442,17 @@ const Dashboard = () => {
             className="relative"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Input
+          </Button>          <Input
             type="search"
             placeholder="Search attendees..."
             className="max-w-xs"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              // Reset pagination when search term changes
+              setCurrentAttendeePage(1);
+              setCurrentLogsPage(1);
+            }}
           />
         </div>
       </div>
@@ -398,7 +507,15 @@ const Dashboard = () => {
         </Card>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value);
+        // Reset pagination when changing tabs
+        if (value === "attendees") {
+          setCurrentAttendeePage(1);
+        } else if (value === "logs") {
+          setCurrentLogsPage(1);
+        }
+      }}>
         <div className="flex items-center justify-between mb-4">
           <TabsList>
             <TabsTrigger value="attendees" className="flex items-center gap-1">
@@ -483,10 +600,9 @@ const Dashboard = () => {
                         <TableHead>Check-Out Time</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                    </TableHeader>                    <TableBody>
                       {filteredAttendees.length > 0 ? (
-                        filteredAttendees.map((attendee) => {
+                        currentAttendees.map((attendee) => {
                           const status = getAttendeeStatus(attendee);
                           
                           return (
@@ -532,6 +648,36 @@ const Dashboard = () => {
                       )}
                     </TableBody>
                   </Table>
+                  
+                  {/* Pagination Controls */}
+                  {filteredAttendees.length > recordsPerPage && (
+                    <div className="flex items-center justify-between space-x-2 py-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {indexOfFirstAttendee + 1} to {Math.min(indexOfLastAttendee, filteredAttendees.length)} of {filteredAttendees.length} attendees
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={prevAttendeePage} 
+                          disabled={currentAttendeePage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-sm">
+                          Page {currentAttendeePage} of {totalAttendeePages}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={nextAttendeePage} 
+                          disabled={currentAttendeePage === totalAttendeePages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -558,10 +704,9 @@ const Dashboard = () => {
                         <TableHead>Check-In Time</TableHead>
                         <TableHead>Check-Out Time</TableHead>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                    </TableHeader>                    <TableBody>
                       {filteredLogs.length > 0 ? (
-                        filteredLogs.map((log) => (
+                        currentLogs.map((log) => (
                           <TableRow key={log.id}>
                             <TableCell className="font-medium">{log.attendeeName}</TableCell>
                             <TableCell>
@@ -581,6 +726,36 @@ const Dashboard = () => {
                       )}
                     </TableBody>
                   </Table>
+                  
+                  {/* Pagination Controls */}
+                  {filteredLogs.length > recordsPerPage && (
+                    <div className="flex items-center justify-between space-x-2 py-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {indexOfFirstLog + 1} to {Math.min(indexOfLastLog, filteredLogs.length)} of {filteredLogs.length} logs
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={prevLogsPage} 
+                          disabled={currentLogsPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-sm">
+                          Page {currentLogsPage} of {totalLogPages}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={nextLogsPage} 
+                          disabled={currentLogsPage === totalLogPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -640,10 +815,9 @@ const Dashboard = () => {
                     <TableHead>Check-In Time</TableHead>
                     <TableHead>Check-Out Time</TableHead>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
+                </TableHeader>                <TableBody>
                   {attendeeLogs.length > 0 ? (
-                    attendeeLogs.map((log) => (
+                    currentAttendeeLogs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-medium">{log.attendeeName}</TableCell>
                         <TableCell>
@@ -663,6 +837,36 @@ const Dashboard = () => {
                   )}
                 </TableBody>
               </Table>
+              
+              {/* Pagination Controls for Attendee Logs */}
+              {attendeeLogs.length > recordsPerPage && (
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {indexOfFirstAttendeeLog + 1} to {Math.min(indexOfLastAttendeeLog, attendeeLogs.length)} of {attendeeLogs.length} logs
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={prevAttendeeLogsPage} 
+                      disabled={currentAttendeeLogsPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="text-sm">
+                      Page {currentAttendeeLogsPage} of {totalAttendeeLogPages}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={nextAttendeeLogsPage} 
+                      disabled={currentAttendeeLogsPage === totalAttendeeLogPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
